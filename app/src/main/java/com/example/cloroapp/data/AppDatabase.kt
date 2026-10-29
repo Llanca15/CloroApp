@@ -8,12 +8,15 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [
         Usuario::class,
+        UsuarioGranja::class,
         Granja::class,
         PuntoMedicion::class,
         NivelCloro::class,
-        Alerta::class
+        Alerta::class,
+        AccionCorrectiva::class
     ],
-    version = 1,
+    // Versión 2: el esquema cambió respecto a la v1 de la primera entrega (ids Long, enums, nuevas tablas).
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -23,6 +26,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun puntoMedicionDao(): PuntoMedicionDao
     abstract fun nivelCloroDao(): NivelCloroDao
     abstract fun alertaDao(): AlertaDao
+    abstract fun accionCorrectivaDao(): AccionCorrectivaDao
 
     companion object {
         @Volatile
@@ -30,13 +34,15 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
+                INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "cloro_database"
-                ).build()
-                INSTANCE = instance
-                instance
+                )
+                    // La base solo contiene datos ficticios: se recrea en vez de migrar desde la v1.
+                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    .build()
+                    .also { INSTANCE = it }
             }
         }
     }

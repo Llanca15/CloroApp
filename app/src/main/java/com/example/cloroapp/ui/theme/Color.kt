@@ -2,10 +2,12 @@ package com.example.cloroapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Paleta azul agua para la aplicación. Los colores de estado (normal / advertencia / crítico)
+// viven en ui/componentes/Componentes.kt para mantener el contraste en ambos temas.
+val Agua80 = Color(0xFF90CAF9)
+val AguaGris80 = Color(0xFFB0BEC5)
+val Turquesa80 = Color(0xFF80CBC4)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val Agua40 = Color(0xFF0D5C91)
+val AguaGris40 = Color(0xFF546E7A)
+val Turquesa40 = Color(0xFF00796B)

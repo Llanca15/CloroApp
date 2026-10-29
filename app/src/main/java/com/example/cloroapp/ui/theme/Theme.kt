@@ -12,15 +12,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = Agua80,
+    secondary = AguaGris80,
+    tertiary = Turquesa80
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = Agua40,
+    secondary = AguaGris40,
+    tertiary = Turquesa40
 
     /* Other default colors to override
     background = Color(0xFFFFFBFE),
@@ -36,8 +36,8 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun CloroAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Color dinámico (Android 12+) desactivado por defecto para conservar la paleta de la app
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

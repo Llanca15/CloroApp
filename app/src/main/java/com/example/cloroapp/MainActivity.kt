@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.example.cloroapp.ui.screen.HomeScreen
+import com.example.cloroapp.ui.CloroApp
 import com.example.cloroapp.ui.theme.CloroAppTheme
 
 class MainActivity : ComponentActivity() {
@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             CloroAppTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    HomeScreen()
+                    CloroApp()
                 }
             }
         }
