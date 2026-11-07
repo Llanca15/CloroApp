@@ -15,8 +15,8 @@ import androidx.room.RoomDatabase
         Alerta::class,
         AccionCorrectiva::class
     ],
-    // Versión 2: el esquema cambió respecto a la v1 de la primera entrega (ids Long, enums, nuevas tablas).
-    version = 2,
+    // Versión 4: rutas de archivos de fotos (fotoRuta) en SQLite para persistencia nativa con FileProvider.
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -1,25 +1,32 @@
 package com.example.cloroapp.ui.viewmodel
 
+import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cloroapp.data.AccionCorrectiva
 import com.example.cloroapp.data.AlertaDetalle
 import com.example.cloroapp.data.CloroRepository
 import com.example.cloroapp.data.EstadisticaPunto
+import com.example.cloroapp.data.ImagenUtils
 import com.example.cloroapp.data.PreferenciasRepository
 import com.example.cloroapp.data.PuntoResumen
 import com.example.cloroapp.domain.Periodo
 import com.example.cloroapp.domain.RangosCloro
 import com.example.cloroapp.domain.ValidadorFormularios
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 /** Lista de alertas pendientes o historial completo (respuesta 24). */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -37,7 +44,7 @@ class AlertasViewModel(repo: CloroRepository) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }
 
-/** Detalle de una alerta: acciones correctivas realizadas, validación desacoplada y cierre por el supervisor. */
+/** Detalle de una alerta: acciones correctivas con foto en archivo persistente y Room. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AlertaDetalleViewModel(private val repo: CloroRepository) : ViewModel() {
 
@@ -51,8 +58,14 @@ class AlertaDetalleViewModel(private val repo: CloroRepository) : ViewModel() {
     private val _errorDescripcion = MutableStateFlow<String?>(null)
     val errorDescripcion: StateFlow<String?> = _errorDescripcion.asStateFlow()
 
-    private val _fotoEvidencia = MutableStateFlow<Bitmap?>(null)
-    val fotoEvidencia: StateFlow<Bitmap?> = _fotoEvidencia.asStateFlow()
+    private val _fotoUri = MutableStateFlow<Uri?>(null)
+    val fotoUri: StateFlow<Uri?> = _fotoUri.asStateFlow()
+
+    private val _fotoRuta = MutableStateFlow<String?>(null)
+    val fotoRuta: StateFlow<String?> = _fotoRuta.asStateFlow()
+
+    private val _fotoBitmap = MutableStateFlow<Bitmap?>(null)
+    val fotoBitmap: StateFlow<Bitmap?> = _fotoBitmap.asStateFlow()
 
     fun seleccionar(id: Long) {
         alertaId.value = id
@@ -60,6 +73,13 @@ class AlertaDetalleViewModel(private val repo: CloroRepository) : ViewModel() {
 
     val alerta: StateFlow<AlertaDetalle?> = alertaId
         .flatMapLatest { repo.observarAlerta(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val puntoActual: StateFlow<PuntoResumen?> = alerta
+        .flatMapLatest { det ->
+            if (det == null) flowOf(null)
+            else repo.observarPunto(det.alerta.puntoMedicionId)
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val acciones: StateFlow<List<AccionCorrectiva>> = alertaId
@@ -72,11 +92,31 @@ class AlertaDetalleViewModel(private val repo: CloroRepository) : ViewModel() {
         _errorDescripcion.value = if (recortado.isEmpty()) null else ValidadorFormularios.validarAccionCorrectiva(recortado)
     }
 
-    fun adjuntarFotoEvidencia(bitmap: Bitmap?) {
-        _fotoEvidencia.value = bitmap
-        if (bitmap != null) {
-            _mensaje.value = "Fotografía de respaldo adjuntada a la acción correctiva."
+    fun prepararCapturaFoto(context: Context): Uri {
+        val (uri, archivo) = ImagenUtils.crearUriFotoTemporal(context)
+        _fotoUri.value = uri
+        _fotoRuta.value = archivo.absolutePath
+        return uri
+    }
+
+    fun confirmarFotoCapturada(context: Context) {
+        val uri = _fotoUri.value ?: return
+        viewModelScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                ImagenUtils.cargarBitmapDesdeUri(context, uri)
+            }
+            _fotoBitmap.value = bitmap
+            _mensaje.value = "Foto guardada exitosamente"
         }
+    }
+
+    fun eliminarFoto() {
+        _fotoRuta.value?.let { ruta ->
+            try { File(ruta).delete() } catch (_: Exception) {}
+        }
+        _fotoUri.value = null
+        _fotoRuta.value = null
+        _fotoBitmap.value = null
     }
 
     fun consumirMensaje() {
@@ -91,17 +131,23 @@ class AlertaDetalleViewModel(private val repo: CloroRepository) : ViewModel() {
             return
         }
         viewModelScope.launch {
-            val textoFinal = if (_fotoEvidencia.value != null) {
-                "${descripcion.trim()} [Evidencia fotográfica capturada]"
-            } else {
-                descripcion.trim()
-            }
-            val respuesta = repo.registrarAccionCorrectiva(alertaId.value, textoFinal)
+            val ruta = _fotoRuta.value
+            val respuesta = repo.registrarAccionCorrectiva(
+                alertaId = alertaId.value,
+                descripcion = descripcion.trim(),
+                fotoRuta = ruta
+            )
             if (respuesta == null) {
                 _descripcionAccion.value = ""
                 _errorDescripcion.value = null
-                _fotoEvidencia.value = null
-                _mensaje.value = "Acción correctiva registrada correctamente."
+                _fotoUri.value = null
+                _fotoRuta.value = null
+                _fotoBitmap.value = null
+                _mensaje.value = if (!ruta.isNullOrBlank()) {
+                    "Acción correctiva registrada con foto guardada exitosamente"
+                } else {
+                    "Acción correctiva registrada correctamente."
+                }
             } else {
                 _errorDescripcion.value = respuesta
                 _mensaje.value = respuesta
